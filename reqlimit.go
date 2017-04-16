@@ -7,28 +7,33 @@ import (
 	"time"
 )
 
+// Limiter is a http.Handler that rate-limits a http.Handler on a per-IP basis.
 type Limiter struct {
 	mu sync.Mutex
 
-	requests       map[string][]time.Time
-	limit          uint64
-	limitTimeout   time.Duration
-	limitErrorText string
+	requests     map[string][]time.Time
+	limit        uint64
+	limitTimeout time.Duration
 
 	nextHandler http.Handler
 }
 
+// New creates a new Limiter, limiting requests to the supplied handler to
+// `limit` requests over duration of the supplied `timeout`.
 func New(h http.Handler, limit uint64, timeout time.Duration) *Limiter {
 	return &Limiter{
-		requests:       make(map[string][]time.Time),
-		limit:          limit,
-		limitTimeout:   timeout,
-		limitErrorText: "exceeded request limit",
+		requests:     make(map[string][]time.Time),
+		limit:        limit,
+		limitTimeout: timeout,
 
 		nextHandler: h,
 	}
 }
 
+// Listener's ServeHTTP implements the http.Handler interface and checks if the
+// remote host has exceeded the request limit. If it has, it returns a
+// http.Error with http.StatusForbidden. Otherwise, the protected handler will
+// be called.
 func (l *Limiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -55,7 +60,7 @@ func (l *Limiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l.requests[remoteIP] = updatedHistory
 
 	if uint64(len(updatedHistory)) > l.limit {
-		http.Error(w, l.limitErrorText, http.StatusForbidden)
+		http.Error(w, "request limit exceeded", http.StatusForbidden)
 		return
 	}
 

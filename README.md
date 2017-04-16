@@ -1,6 +1,6 @@
 # reqlimit
 
-reqlimit is a tiny Go middleware you can use to limit the frequency of requests to your server, on a per-IP basis.
+reqlimit is a tiny Golang middleware you can use to limit the frequency of requests to your server, on a per-IP basis.
 
 ## Usage Example
 
