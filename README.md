@@ -27,3 +27,13 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", limitedHandler) )
 }
 ```
+
+## Benchmarks
+A limited handler is slower and requires more memory than a naked handler. Here's the benchmarks:
+
+```
+BenchmarkLimitedHandler-8          10000            179050 ns/op          380884 B/op         21 allocs/op
+BenchmarkHandler-8               3000000               486 ns/op             656 B/op          6 allocs/op``
+```
+
+

@@ -87,26 +87,20 @@ func BenchmarkLimitedHandler(b *testing.B) {
 	maxRequests := uint64(10000)
 	duration := time.Second
 
-	r, _ := http.NewRequest("GET", "/", nil)
-	w := httptest.NewRecorder()
-
 	testHandler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 	limitedHandler := New(testHandler, maxRequests, duration)
 
 	for i := 0; i < b.N; i++ {
-		limitedHandler.ServeHTTP(w, r)
+		limitedHandler.ServeHTTP(testRequest("1.2.3.4:1234"))
 	}
 }
 
 func BenchmarkHandler(b *testing.B) {
 	b.ReportAllocs()
 
-	r, _ := http.NewRequest("GET", "/", nil)
-	w := httptest.NewRecorder()
-
 	testHandler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
 	for i := 0; i < b.N; i++ {
-		testHandler.ServeHTTP(w, r)
+		testHandler.ServeHTTP(testRequest("1.2.3.4:1234"))
 	}
 }
