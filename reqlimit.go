@@ -11,9 +11,9 @@ import (
 type limiter struct {
 	mu sync.Mutex
 
-	requests     map[string][]time.Time
-	limit        uint64
+	requests     map[string](chan struct{})
 	limitTimeout time.Duration
+	limit        uint64
 
 	nextHandler http.Handler
 }
@@ -22,9 +22,9 @@ type limiter struct {
 // `limit` requests over duration of the supplied `timeout`.
 func New(h http.Handler, limit uint64, timeout time.Duration) *limiter {
 	return &limiter{
-		requests:     make(map[string][]time.Time),
-		limit:        limit,
+		requests:     make(map[string]chan struct{}),
 		limitTimeout: timeout,
+		limit:        limit,
 
 		nextHandler: h,
 	}
@@ -35,31 +35,32 @@ func New(h http.Handler, limit uint64, timeout time.Duration) *limiter {
 // http.Error with http.StatusForbidden. Otherwise, the protected handler will
 // be called.
 func (l *limiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var updatedHistory []time.Time
-	history, exists := l.requests[remoteIP]
-
-	if exists {
-		// filter requests that have expired
-		for _, requestTime := range history {
-			if requestTime.Add(l.limitTimeout).After(time.Now()) {
-				updatedHistory = append(updatedHistory, requestTime)
-			}
-		}
+	// grab the requests channel for this remote host, or create it if it doesn't
+	// exist
+	l.mu.Lock()
+	requests, exists := l.requests[remoteIP]
+	if !exists {
+		requests = make(chan struct{}, l.limit)
+		l.requests[remoteIP] = requests
 	}
+	l.mu.Unlock()
 
-	updatedHistory = append(updatedHistory, time.Now())
-	l.requests[remoteIP] = updatedHistory
+	// drain the request channel after the limit timeout
+	go func() {
+		time.Sleep(l.limitTimeout)
+		<-requests
+	}()
 
-	if uint64(len(updatedHistory)) > l.limit {
+	// add to the request channel, throw an error if it is currently full.
+	select {
+	case requests <- struct{}{}:
+	default:
 		http.Error(w, "request limit exceeded", http.StatusTooManyRequests)
 		return
 	}

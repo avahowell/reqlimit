@@ -36,6 +36,7 @@ func TestRequestLimitHandler(t *testing.T) {
 	}
 
 	time.Sleep(duration)
+	time.Sleep(time.Second)
 
 	res, err = http.Get(ts.URL)
 	if err != nil {
@@ -84,8 +85,8 @@ func TestRequestLimitHandlerDifferentIPs(t *testing.T) {
 func BenchmarkLimitedHandler(b *testing.B) {
 	b.ReportAllocs()
 
-	maxRequests := uint64(10000)
-	duration := time.Second
+	maxRequests := uint64(10)
+	duration := time.Minute
 
 	testHandler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 	limitedHandler := New(testHandler, maxRequests, duration)
