@@ -18,8 +18,8 @@ type limiter struct {
 	nextHandler http.Handler
 }
 
-// New creates a new Limiter, limiting requests to the supplied handler to
-// `limit` requests over duration of the supplied `timeout`.
+// New creates a new Limiter, limiting each remote host served by the supplied
+// handler to `limit` requests over duration of the supplied `timeout`.
 func New(h http.Handler, limit uint64, timeout time.Duration) *limiter {
 	return &limiter{
 		requests:     make(map[string]chan struct{}),
