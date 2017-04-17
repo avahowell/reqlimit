@@ -51,15 +51,15 @@ func (l *limiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	l.mu.Unlock()
 
-	// drain the request channel after the limit timeout
-	go func() {
-		time.Sleep(l.limitTimeout)
-		<-requests
-	}()
-
 	// add to the request channel, throw an error if it is currently full.
 	select {
 	case requests <- struct{}{}:
+		// drain the request channel after the limit timeout
+		go func() {
+			time.Sleep(l.limitTimeout)
+			<-requests
+		}()
+
 	default:
 		http.Error(w, "request limit exceeded", http.StatusTooManyRequests)
 		return
