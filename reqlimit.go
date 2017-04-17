@@ -60,7 +60,7 @@ func (l *limiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l.requests[remoteIP] = updatedHistory
 
 	if uint64(len(updatedHistory)) > l.limit {
-		http.Error(w, "request limit exceeded", http.StatusForbidden)
+		http.Error(w, "request limit exceeded", http.StatusTooManyRequests)
 		return
 	}
 

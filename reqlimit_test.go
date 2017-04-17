@@ -31,8 +31,8 @@ func TestRequestLimitHandler(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if res.StatusCode != http.StatusForbidden {
-		t.Fatal("limiter did not return forbidden after exceeding maxrequests")
+	if res.StatusCode != http.StatusTooManyRequests {
+		t.Fatal("limiter did not return TooManyRequests after exceeding maxrequests")
 	}
 
 	time.Sleep(duration)
