@@ -32,8 +32,8 @@ func New(h http.Handler, limit uint64, timeout time.Duration) *limiter {
 
 // Listener's ServeHTTP implements the http.Handler interface and checks if the
 // remote host has exceeded the request limit. If it has, it returns a
-// http.Error with http.StatusForbidden. Otherwise, the protected handler will
-// be called.
+// http.Error with http.StatusTooManyRequests. Otherwise, the protected handler
+// will be called.
 func (l *limiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
