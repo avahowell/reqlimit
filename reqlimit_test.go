@@ -47,7 +47,43 @@ func TestRequestLimitHandler(t *testing.T) {
 	}
 }
 
+func testRequest(remoteAddr string) (*httptest.ResponseRecorder, *http.Request) {
+	r, _ := http.NewRequest("GET", "/", nil)
+	r.RemoteAddr = remoteAddr
+	w := httptest.NewRecorder()
+	return w, r
+}
+
+func TestRequestLimitHandlerDifferentIPs(t *testing.T) {
+	maxRequests := uint64(10)
+	duration := time.Minute
+
+	testHandler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
+	limitedHandler := New(testHandler, maxRequests, duration)
+
+	// fill up the limit
+	for i := 0; uint64(i) < maxRequests; i++ {
+		limitedHandler.ServeHTTP(testRequest("3.4.5.6:7483"))
+	}
+
+	// verify that the limit is hit
+	w, r := testRequest("3.4.5.6:8080")
+	limitedHandler.ServeHTTP(w, r)
+	if w.Result().StatusCode != http.StatusTooManyRequests {
+		t.Fatal("expected the limit to be hit")
+	}
+
+	// verify that we can successfully request with a different ip
+	w, r = testRequest("1.2.3.4:1234")
+	limitedHandler.ServeHTTP(w, r)
+	if w.Result().StatusCode != http.StatusOK {
+		t.Fatal("expected to get StatusOK after changing IP")
+	}
+}
+
 func BenchmarkLimitedHandler(b *testing.B) {
+	b.ReportAllocs()
+
 	maxRequests := uint64(10000)
 	duration := time.Second
 
@@ -63,6 +99,8 @@ func BenchmarkLimitedHandler(b *testing.B) {
 }
 
 func BenchmarkHandler(b *testing.B) {
+	b.ReportAllocs()
+
 	r, _ := http.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 
