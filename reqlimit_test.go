@@ -46,3 +46,29 @@ func TestRequestLimitHandler(t *testing.T) {
 		t.Fatal("limiter did not return StatusOK after waiting for the duration to expire")
 	}
 }
+
+func BenchmarkLimitedHandler(b *testing.B) {
+	maxRequests := uint64(10000)
+	duration := time.Second
+
+	r, _ := http.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+
+	testHandler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
+	limitedHandler := New(testHandler, maxRequests, duration)
+
+	for i := 0; i < b.N; i++ {
+		limitedHandler.ServeHTTP(w, r)
+	}
+}
+
+func BenchmarkHandler(b *testing.B) {
+	r, _ := http.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+
+	testHandler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
+
+	for i := 0; i < b.N; i++ {
+		testHandler.ServeHTTP(w, r)
+	}
+}
