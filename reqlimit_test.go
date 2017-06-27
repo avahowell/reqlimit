@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -82,7 +83,7 @@ func TestRequestLimitHandlerDifferentIPs(t *testing.T) {
 	}
 }
 
-func BenchmarkLimitedHandler(b *testing.B) {
+func BenchmarkLimitedHandlerSingleIP(b *testing.B) {
 	b.ReportAllocs()
 
 	maxRequests := uint64(10)
@@ -91,17 +92,46 @@ func BenchmarkLimitedHandler(b *testing.B) {
 	testHandler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 	limitedHandler := New(testHandler, maxRequests, duration)
 
+	w, req := testRequest("1.2.3.4:5678")
 	for i := 0; i < b.N; i++ {
-		limitedHandler.ServeHTTP(testRequest("1.2.3.4:1234"))
+		limitedHandler.ServeHTTP(w, req)
 	}
 }
 
-func BenchmarkHandler(b *testing.B) {
+func BenchmarkLimitedHandlerManyIPs(b *testing.B) {
+	strs := make([]string, 1e6)
+	for i := range strs {
+		strs[i] = "1.2.3." + strconv.Itoa(i) + ":4567"
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	maxRequests := uint64(10)
+	duration := time.Minute
+
+	testHandler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
+	limitedHandler := New(testHandler, maxRequests, duration)
+
+	w, req := testRequest("")
+	for i := 0; i < b.N; i++ {
+		req.RemoteAddr = strs[i%len(strs)]
+		limitedHandler.ServeHTTP(w, req)
+	}
+}
+
+func BenchmarkRawHandler(b *testing.B) {
+	strs := make([]string, 1e6)
+	for i := range strs {
+		strs[i] = "1.2.3." + strconv.Itoa(i) + ":4567"
+	}
+	b.ResetTimer()
 	b.ReportAllocs()
 
 	testHandler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
+	w, req := testRequest("")
 
 	for i := 0; i < b.N; i++ {
-		testHandler.ServeHTTP(testRequest("1.2.3.4:1234"))
+		req.RemoteAddr = strs[i%len(strs)]
+		testHandler.ServeHTTP(w, req)
 	}
 }
