@@ -32,7 +32,8 @@ func main() {
 A limited handler is a bit slower and requires a bit more memory than a naked handler. Here's the benchmarks:
 
 ```
-BenchmarkLimitedHandler-8        1000000              1703 ns/op            1488 B/op         14 allocs/op
-BenchmarkHandler-8               3000000               504 ns/op             656 B/op          6 allocs/op
+BenchmarkLimitedHandlerSingleIP-4    5000000       383 ns/op     120 B/op       3 allocs/op
+BenchmarkLimitedHandlerManyIPs-4     2000000       532 ns/op     203 B/op       2 allocs/op
+BenchmarkRawHandler-4              100000000      13.3 ns/op       0 B/op       0 allocs/op
 ```
 
