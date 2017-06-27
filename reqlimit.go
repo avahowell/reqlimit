@@ -11,7 +11,7 @@ import (
 type limiter struct {
 	mu sync.Mutex
 
-	requests     map[string](chan struct{})
+	requests     map[string]uint64
 	limitTimeout time.Duration
 	limit        uint64
 
@@ -22,7 +22,7 @@ type limiter struct {
 // handler to `limit` requests over duration of the supplied `timeout`.
 func New(h http.Handler, limit uint64, timeout time.Duration) *limiter {
 	return &limiter{
-		requests:     make(map[string]chan struct{}),
+		requests:     make(map[string]uint64),
 		limitTimeout: timeout,
 		limit:        limit,
 
@@ -41,23 +41,26 @@ func (l *limiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// grab the requests channel for this remote host, or create it if it doesn't
-	// exist
+	// lookup the number of active requests for this IP
 	l.mu.Lock()
-	requests, exists := l.requests[remoteIP]
-	if !exists {
-		requests = make(chan struct{}, l.limit)
-		l.requests[remoteIP] = requests
+	limitExceeded := l.requests[remoteIP] >= l.limit
+	if !limitExceeded {
+		// increment the number of requests
+		l.requests[remoteIP]++
+
+		// after timeout, decrement the number of requests
+		time.AfterFunc(l.limitTimeout, func() {
+			l.mu.Lock()
+			l.requests[remoteIP]--
+			if l.requests[remoteIP] == 0 {
+				delete(l.requests, remoteIP)
+			}
+			l.mu.Unlock()
+		})
 	}
 	l.mu.Unlock()
 
-	// add to the request channel, throw an error if it is currently full.
-	select {
-	case requests <- struct{}{}:
-		// drain the request channel after the limit timeout
-		time.AfterFunc(l.limitTimeout, func() { <-requests })
-
-	default:
+	if limitExceeded {
 		http.Error(w, "request limit exceeded", http.StatusTooManyRequests)
 		return
 	}
