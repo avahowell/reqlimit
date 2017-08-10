@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/johnathanhowell/reqlimit"
+	"github.com/avahowell/reqlimit"
 )
 
 func protectedHandler(w http.ResponseWriter, _ *http.Request) {
